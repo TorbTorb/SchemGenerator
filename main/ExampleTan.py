@@ -11,9 +11,9 @@ def main():
     schematic = Schematic()
 
     #play with these
-    exponent = 2
+    exponent = 3
     size = 254
-    zoom = 50
+    zoom = 10
     threshold = 0.5
 
 
