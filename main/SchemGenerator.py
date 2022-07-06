@@ -199,9 +199,10 @@ class Schematic:
     def fill(self, blocktype:str, pos1:tuple[int, int, int], pos2:tuple[int, int, int]) -> None:
         "Fills the space between the 2 position with a cube with the given block"
         blocktype = blocktype.removeprefix("minecraft:")
-        pos1, pos2 = self._sortposition(pos1, pos2)
         self._addtopalette(blocktype)
         id = self._palette.get(blocktype)
+
+        pos1, pos2 = self._sortposition(pos1, pos2)
         for x in range(pos1[0], pos2[0]+1):
             for y in range(pos1[1], pos2[1]+1):
                 for z in range(pos1[2], pos2[2]+1):
@@ -211,9 +212,43 @@ class Schematic:
         # like we stack
         pass
 
-    def move(self, Amount:int = 1, direction:str = None, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
-        #moves the selection
-        pass
+    def move(self, vector:tuple[int, int, int] = (0,0,0), moveair = True, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
+        if vector == (0,0,0):
+            return
+        if pos1 == None and pos2 == None:   #move all. we nees to use a temporary dict here because we could other wise overwrite blocks
+            blocksnew = {}
+            for i in self._blocks.items():
+                blocksnew[(i[0][0] + vector[0], i[0][1] + vector[1], i[0][2] + vector[2])] = i[1]
+            self._blocks = blocksnew
+            return
+        #move only some area
+        #first thing: make copy of area we want to move and clear it
+        copyarea = {}
+        pos1, pos2 = self._sortposition(pos1, pos2)
+        for x in range(pos1[0], pos2[0]+1):
+            for y in range(pos1[1], pos2[1]+1):
+                for z in range(pos1[2], pos2[2]+1):
+                    id = self._blocks.get((x,y,z), None)
+                    if id != None:
+                        copyarea[x, y, z] = id
+                        self._blocks.pop((x, y, z))
+
+        #second thing: clear area we want to move to (but only if we move air too)
+        if moveair:
+            pos1v = (pos1[0] + vector[0], pos1[1] + vector[1], pos1[2] + vector[2])
+            pos2v = (pos2[0] + vector[0], pos2[1] + vector[1], pos2[2] + vector[2])
+            for x in range(pos1v[0], pos2v[0]+1):
+                for y in range(pos1v[1], pos2v[1]+1):
+                    for z in range(pos1v[2], pos2v[2]+1):
+                        if self._blocks.get((x, y, z)) != None:     #couldnt find a faster way to do it
+                            self._block.pop((x, y, z))
+
+        #paste the copied blocks into the new area
+        for i in copyarea.items():
+            self._blocks[(i[0][0] + vector[0], i[0][1] + vector[1], i[0][2] + vector[2])] = i[1]
+
+        
+        
 
     def replace(self, old:str, new:str, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
         "Replaces the old blocks with new block in the selection. If no positions are given it will replace all instances of the old block with the new one"

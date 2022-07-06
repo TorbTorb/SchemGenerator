@@ -9,7 +9,9 @@ def main():
 
     file.open("main/Schematics/testopen2.schem")
     file.replace("gray_concrete", "white_concrete")
-    file.setBlock("obsidian", (1, -1, 0))
+    file.move((0, 0, 5), True, (-5, -6, 3),(0, 0, -3))
+    file.move((5, -2, 0))
+    file.setBlock("obsidian", (0, -1, 0))
 
     timeendfill = time.perf_counter()
     print("Generating and saving...")
