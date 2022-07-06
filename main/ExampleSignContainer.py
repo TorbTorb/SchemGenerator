@@ -19,7 +19,7 @@ def main():
     timeendfill = time.perf_counter()
     print("Generating and saving...")
     timestartsaving = time.perf_counter()
-    file.save("Schematics/ssTest.schem")
+    file.save("main/Schematics/ssTest.schem")
     timedone = time.perf_counter()
 
     print(f"Making took {round(timeendfill - timestartfill, 5)}s")
