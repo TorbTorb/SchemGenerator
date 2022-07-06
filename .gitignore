@@ -2,6 +2,7 @@ main/test/
 main/Schematics/openTestResult.schem
 main/Schematics/ssTest.schem
 main/Schematics/tanTest.schem
+main/test.py
 # Byte-compiled / optimized / DLL files
 main/__pycache__/
 main/nbt/__pycache__/
