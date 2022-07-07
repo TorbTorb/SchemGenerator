@@ -1,7 +1,6 @@
 
 from math import ceil, floor
 from nbt.nbt import *
-from numpy import full
 
 class Schematic:
     def __init__(self):
