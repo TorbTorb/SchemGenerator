@@ -22,7 +22,7 @@ def main():
             result = abs(tan((((pixelx/size*zoom) - zoom/2)**exponent)+(((pixely/size*zoom) - zoom/2))**exponent))
             if result <= threshold: block = "light_gray_concrete"
             else: block = "gray_concrete"
-            schematic.setBlock(block, (pixelx, -1, pixely))
+            schematic.setBlock((pixelx, -1, pixely), block)
 
     timeendfill = time.perf_counter()
     print("Generating and saving...")
