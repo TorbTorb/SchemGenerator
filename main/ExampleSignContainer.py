@@ -10,10 +10,10 @@ def main():
     timestartfill = time.perf_counter()
 
     for i in range(16):
-        file.setSSContainer("barrel[facing=up]" , (i,-1,0), i)
-        file.setSSContainer("white_shulker_box[facing=north]", (i, -2, 0), i)
-        file.setSSContainer("composter", (i, -3, 0), i)
-        file.setSSContainer("dropper", (i, -4, 0), i)
+        file.setSSContainer((i,-1,0), "barrel[facing=up]" , i)
+        file.setSSContainer((i, -2, 0), "white_shulker_box[facing=north]", i)
+        file.setSSContainer((i, -3, 0), "composter", i)
+        file.setSSContainer((i, -4, 0), "dropper", i)
         file.setSign((i, 0, 0), str(i))
 
     timeendfill = time.perf_counter()
