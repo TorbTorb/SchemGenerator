@@ -2,6 +2,7 @@
 from SchemGenerator import *
 import time
 
+#takes one of 2 included schematics and modifies them
 def main():
     file = Schematic()
     print("Placing blocks...")
