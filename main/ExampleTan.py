@@ -4,18 +4,18 @@ import time
 from SchemGenerator import *
 
 def main():
-    # this generates a schematic of tan(x^2 + y^2)#
+    # this generates a schematic of tan(x^2 + y^2) <= some threshold#
     # https://youtu.be/IbYZ027zBlM?t=340
     print("Placing blocks...")
     timestartfill = time.perf_counter()
     schematic = Schematic()
 
-    #play with these
+    #you can play with these
     exponent = 3
     size = 254
     zoom = 10
     threshold = 0.5
-
+    ########
 
     for pixely in range(size):
         for pixelx in range(size):

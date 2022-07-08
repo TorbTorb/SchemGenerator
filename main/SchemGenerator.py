@@ -1,7 +1,9 @@
 from math import ceil, floor
 from nbt.nbt import *
 
-# you must use a atleast python 3.9.0 for this tool to work
+#schematic generator by Torb
+#this tool allows you to easily create and modify schematics without having to worry about all the nbttags and whatnot
+#you must use a atleast python 3.9.0 for this tool to work
 class Schematic:
     def __init__(self):
         #pallete is a dictionary where the key is the blocktype and value is the id
@@ -31,6 +33,7 @@ class Schematic:
         #generates the schematic
         if len(self._palette) > 256:
             raise Exception("Too many different blocks you dumdum")
+        #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
         #get the min and max coords
         xmin, ymin, zmin, xmax, ymax, zmax = self._getminmaxcoords()
         height = ymax - ymin + 1
@@ -63,21 +66,24 @@ class Schematic:
         TAG_Int(name = "PaletteMax", value = len(self._palette)),
         TAG_Int(name = "Version", value = 2),
         TAG_Byte_Array(name = "BlockData")])
+
+        #invert the palette {id: block} should be faster than looking through the palette for each container
+        invertedpalette = {}
+        for i in self._palette.items():
+            invertedpalette[i[1]] = i[0]
         #create actual Blockdata
         blockdata = [self._palette.get("air", 0)] * (width*length*height)
         for block in self._blocks.items():
-            if type(block[1]) == int:   #its a normal lock
+            if type(block[1]) == int:   #its a normal block
                 blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1]
 
             elif type(block[1][1]) == int:    #its a container
                 blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
-                #calc items for ss
-                for item in self._palette.items():
-                    if block[1][0] == item[1]:
-                        container = item[0]
-                        break
-                else:    #this executes if the block has NOT been found in the palette. 
+                #get container type
+                container = invertedpalette.get(block[1][0])
+                if container == None:    #this executes if the block has NOT been found in the palette. 
                     raise Exception(f"Could not find{block} in the palette")    #i dont think this can happen but wont hurt adding it
+                #get amount of slots and whether to use dust or totems
                 if container[:5] == "chest" or container[:6] == "barrel" or "shulker_box" in container:
                     slots = 27
                     mult = 1
@@ -96,6 +102,7 @@ class Schematic:
                     easy = False
                 else:
                     raise Exception("Container of type " + container + " is not supported / valid")
+                #calc items for ss
                 itemamount = max(block[1][1],ceil(slots*mult/14*(block[1][1]-1)))
                 #block entity template
                 nbtfile["BlockEntities"].tags.append(TAG_Compound())
@@ -178,9 +185,9 @@ class Schematic:
     def setSSContainer(self, pos:tuple[int, int, int], containertype:str,  ss:int = 0) -> None:
         "Sets a container with a specified ss at some positon. Additional data can be give like barrel[facing=up]. Working containers are: barrels, chests, hoppers, composters, droppers, dispensers, all types of furnaces and shulker boxes."
         containertype = containertype.removeprefix("minecraft:")
-        if  type(ss) != int or ss>34 or ss<0:
+        if  type(ss) != int or ss>15 or ss<0:   #invalid ss detection
             raise Exception(f"Given signal strength of '{ss}' is invalid")
-        if containertype == "composter":
+        if containertype == "composter":        #special case for composter since its not a blockentity but a normal block instead
             containertype = f"composter[level={ss%9}]"
             self._addtopalette(containertype)
             self._blocks[pos] = self._palette.get(containertype)
@@ -210,8 +217,9 @@ class Schematic:
                 for z in range(pos1[2], pos2[2]+1):
                     self._blocks[(x, y, z)] = id
 
-    def stack(self, pos1:tuple[int, int, int], pos2:tuple[int, int, int]) -> None:
-        # like we stack
+    def stack(self, vector:tuple[int, int, int], amount:int = 1,  pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
+        #idk if ill ever implement this method
+        #because it seems kinda useless when you can just do a for loop yourself
         pass
 
     def move(self, vector:tuple[int, int, int] = (0,0,0), moveair = True, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
@@ -285,6 +293,9 @@ class Schematic:
     def open(self, directory:str = None) -> None:
         "Opens an existing schematic which you can then modify. Deletes the schematic you were creating currently!"
         file = NBTFile(directory, "rb")
+        if len(file["Palette"]) > 256:
+            raise Exception("Too many different blocks in the palette you dumdum")
+            #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
         #print(file.pretty_tree())
         self._palette = {}
         self._blocks = {}
@@ -318,7 +329,7 @@ class Schematic:
         "minecraft:redstone_block": 64,
         "minecraft:glass": 64,
         "minecraft:snowball": 16,
-        "minecraft:totem_of_undying": 1,}
+        "minecraft:totem_of_undying": 1}
         #go through the blockentity list
         for i in range(len(file["BlockEntities"])):
             block = file["BlockEntities"][i]["Id"].value.removeprefix("minecraft:")
@@ -345,10 +356,11 @@ class Schematic:
                 slots = 3
             elif block == "dropper" or block == "dispenser":
                 slots = 9
-            else: continue     #just skip whatever that might be lol
+            else: continue     #just skip whatever that might be lol (comparators have an entry in the block entity list)(we just ignnore them lol)
+            #this means you will have to update them once you paste the schematic but i couldnt be bothered to add it
             fullness = 0
             for j in range(len(file["BlockEntities"][i].get("Items", []))):     #go trough each slot and count the items
-                fullness += file["BlockEntities"][i]["Items"][j]["Count"].value / maxStack.get(file["BlockEntities"][i]["Items"][j]["id"].value, 64)    #default to 64
+                fullness += file["BlockEntities"][i]["Items"][j]["Count"].value / maxStack.get(file["BlockEntities"][i]["Items"][j]["id"].value, 64)    #default to 64 id the item cant be found
             signalStrength = floor(1 + ((fullness) / (slots)) * 14)
             self._blocks[pos] = (self._blocks[pos], signalStrength)
 
