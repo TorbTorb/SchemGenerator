@@ -1,5 +1,5 @@
 
-from SchemGenerator import *
+from SchemGenerator.SchemGenerator import *
 import time
 
 # generates a colletion of containers with some signal strangth from 0 to 15 in order

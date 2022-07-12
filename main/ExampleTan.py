@@ -1,7 +1,7 @@
 
 from math import tan
 import time
-from SchemGenerator import *
+from SchemGenerator.SchemGenerator import *
 
 def main():
     # this generates a schematic of tan(x^2 + y^2) <= some threshold#
