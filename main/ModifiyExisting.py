@@ -1,5 +1,5 @@
 
-from SchemGenerator import *
+from SchemGenerator.SchemGenerator import *
 import time
 
 #takes one of 2 included schematics and modifies them
