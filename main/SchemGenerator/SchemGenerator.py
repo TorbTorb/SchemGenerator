@@ -1,9 +1,10 @@
 from math import ceil, floor
-from nbt.nbt import *
+import nbt.nbt as nbt
 
 #schematic generator by Torb
 #this tool allows you to easily create and modify schematics without having to worry about all the nbttags and whatnot
-#you must use a atleast python 3.9.0 for this tool to work
+#this might not work if you are using a python version below 3.10
+#if that is the case just remove the type hints
 #if you want it to work on a lower version you need to remove the type hints (more specifically the tuple[] hint)
 class Schematic:
     def __init__(self):
@@ -41,32 +42,32 @@ class Schematic:
         length = zmax - zmin + 1
         width = xmax - xmin + 1
         #create NBT file
-        nbtfile = NBTFile()
+        nbtfile = nbt.NBTFile()
         nbtfile.name = "Schematic"
 
         #create metadata (WE offsets)
-        nbtfile.tags.append(TAG_Compound(name = "Metadata"))
+        nbtfile.tags.append(nbt.TAG_Compound(name = "Metadata"))
         nbtfile["Metadata"].tags.extend([
-        TAG_Int(name = "WEOffsetX", value = xmin),    #xmin 
-        TAG_Int(name = "WEOffsetY", value = ymin),    #ymin
-        TAG_Int(name = "WEOffsetZ", value = zmin)])   #zmin
+        nbt.TAG_Int(name = "WEOffsetX", value = xmin),    #xmin 
+        nbt.TAG_Int(name = "WEOffsetY", value = ymin),    #ymin
+        nbt.TAG_Int(name = "WEOffsetZ", value = zmin)])   #zmin
 
         #create palette
-        nbtfile.tags.append(TAG_Compound(name = "Palette"))
+        nbtfile.tags.append(nbt.TAG_Compound(name = "Palette"))
         for palettesingle in self._palette.items():
-            nbtfile["Palette"].tags.append(TAG_Int(name = f"minecraft:{palettesingle[0]}", value = palettesingle[1]))
+            nbtfile["Palette"].tags.append(nbt.TAG_Int(name = f"minecraft:{palettesingle[0]}", value = palettesingle[1]))
 
         #create BlockEntityList
-        nbtfile.tags.append(TAG_List(name = "BlockEntities", type = TAG_Compound))
+        nbtfile.tags.append(nbt.TAG_List(name = "BlockEntities", type = nbt.TAG_Compound))
 
         #Create other and BlockDataArray
-        nbtfile.tags.extend([TAG_Int(name = "DataVersion", value = 2730),
-        TAG_Short(name = "Height", value = height),
-        TAG_Short(name = "Length", value = length),
-        TAG_Short(name = "Width", value = width),
-        TAG_Int(name = "PaletteMax", value = len(self._palette)),
-        TAG_Int(name = "Version", value = 2),
-        TAG_Byte_Array(name = "BlockData")])
+        nbtfile.tags.extend([nbt.TAG_Int(name = "DataVersion", value = 2730),
+        nbt.TAG_Short(name = "Height", value = height),
+        nbt.TAG_Short(name = "Length", value = length),
+        nbt.TAG_Short(name = "Width", value = width),
+        nbt.TAG_Int(name = "PaletteMax", value = len(self._palette)),
+        nbt.TAG_Int(name = "Version", value = 2),
+        nbt.TAG_Byte_Array(name = "BlockData")])
 
         #invert the palette {id: block} should be faster than looking through the palette for each container
         invertedpalette = {}
@@ -75,10 +76,10 @@ class Schematic:
         #create actual Blockdata
         blockdata = [self._palette.get("air", 0)] * (width*length*height)
         for block in self._blocks.items():
-            if type(block[1]) == int:   #its a normal block
+            if type(block[1]) is int:   #its a normal block
                 blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1]
 
-            elif type(block[1][1]) == int:    #its a container
+            elif type(block[1][1]) is int:    #its a container
                 blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
                 #get container type
                 container = invertedpalette.get(block[1][0])
@@ -106,41 +107,41 @@ class Schematic:
                 #calc items for ss
                 itemamount = max(block[1][1],ceil(slots*mult/14*(block[1][1]-1)))
                 #block entity template
-                nbtfile["BlockEntities"].tags.append(TAG_Compound())
+                nbtfile["BlockEntities"].tags.append(nbt.TAG_Compound())
                 nbtfile["BlockEntities"][-1].tags.extend([
-                    TAG_List(name = "Items", type = TAG_Compound),
-                    TAG_String(name = "CustomName", value = str(block[1][1])),
-                    TAG_String(name = "Id", value = "minecraft:" + container),
-                    TAG_Int_Array(name = "Pos")])
+                    nbt.TAG_List(name = "Items", type = nbt.TAG_Compound),
+                    nbt.TAG_String(name = "CustomName", value = str(block[1][1])),
+                    nbt.TAG_String(name = "Id", value = "minecraft:" + container),
+                    nbt.TAG_Int_Array(name = "Pos")])
                 nbtfile["BlockEntities"][-1]["Pos"].value = [block[0][0] - xmin, block[0][1] - ymin, block[0][2] - zmin]
                 if easy:
-                    nbtfile["BlockEntities"][-1]["Items"].tags.append(TAG_Compound())
+                    nbtfile["BlockEntities"][-1]["Items"].tags.append(nbt.TAG_Compound())
                     nbtfile["BlockEntities"][-1]["Items"][0].tags.extend([
-                        TAG_Byte(name="Count", value = itemamount),
-                        TAG_String(name="id", value = "minecraft:totem_of_undying"),
-                        TAG_Byte(name="Slot", value = 0)])
+                        nbt.TAG_Byte(name="Count", value = itemamount),
+                        nbt.TAG_String(name="id", value = "minecraft:totem_of_undying"),
+                        nbt.TAG_Byte(name="Slot", value = 0)])
                 else:
                     for i in range((itemamount//64) + 1):
-                        nbtfile["BlockEntities"][-1]["Items"].tags.append(TAG_Compound())
+                        nbtfile["BlockEntities"][-1]["Items"].tags.append(nbt.TAG_Compound())
                         nbtfile["BlockEntities"][-1]["Items"][-1].tags.extend([
-                            TAG_Byte(name="Count", value = min(itemamount, 64)),
-                            TAG_String(name="id", value = "minecraft:redstone"),
-                            TAG_Byte(name="Slot", value = i)])
+                            nbt.TAG_Byte(name="Count", value = min(itemamount, 64)),
+                            nbt.TAG_String(name="id", value = "minecraft:redstone"),
+                            nbt.TAG_Byte(name="Slot", value = i)])
                         itemamount = itemamount - 64
 
-            elif type(block[1][1]) == str:  #its a sign
+            elif type(block[1][1]) is str:  #its a sign
                 blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
-                nbtfile["BlockEntities"].tags.append(TAG_Compound())
+                nbtfile["BlockEntities"].tags.append(nbt.TAG_Compound())
                 nbtfile["BlockEntities"][-1].tags.extend([
-                    TAG_String(name = "Color", value = block[1][2]),
-                    TAG_Byte(name = "GlowingText", value = block[1][3] * 1),
-                    TAG_String(name = "Id", value = "minecraft:sign"),
-                    TAG_Int_Array(name = "Pos")])
+                    nbt.TAG_String(name = "Color", value = block[1][2]),
+                    nbt.TAG_Byte(name = "GlowingText", value = block[1][3] * 1),
+                    nbt.TAG_String(name = "Id", value = "minecraft:sign"),
+                    nbt.TAG_Int_Array(name = "Pos")])
                 nbtfile["BlockEntities"][-1]["Pos"].value = [block[0][0] - xmin, block[0][1] - ymin, block[0][2] - zmin]
                 text = block[1][1].split("\n")
                 text.extend(["","",""])
                 for i in range(4):
-                    nbtfile["BlockEntities"][-1].tags.append(TAG_String(name = f"Text{i+1}", value = '{"text":"' + text[i]+ '"}'))
+                    nbtfile["BlockEntities"][-1].tags.append(nbt.TAG_String(name = f"Text{i+1}", value = '{"text":"' + text[i]+ '"}'))
 
         nbtfile["BlockData"].value = blockdata
         return nbtfile
@@ -165,7 +166,7 @@ class Schematic:
     def getBlock(self, pos:tuple[int, int, int]) -> str | None:
         "Returns the current block at some position. Returns None if that block hasnt been set. If the block is a sign/container then it will return (<blocktype>, (<other information like ss or text))"
         id = self._blocks.get(pos, None)
-        if type(id) == tuple:   #container/sign
+        if type(id) is tuple:   #container/sign
             for blocktype in self._palette.items():
                 if blocktype[1] == id[0]:
                     return blocktype[0], id[1:]
@@ -207,7 +208,7 @@ class Schematic:
         self._blocks[pos] = (self._palette[woodtype], text, color, isGlowing)
 
     def fill(self, blocktype:str, pos1:tuple[int, int, int], pos2:tuple[int, int, int]) -> None:
-        "Fills the space between the 2 position with a cube with the given block"
+        "Fills the space between the 2 position with the given block"
         blocktype = blocktype.removeprefix("minecraft:")
         self._addtopalette(blocktype)
         id = self._palette.get(blocktype)
@@ -219,6 +220,7 @@ class Schematic:
                     self._blocks[(x, y, z)] = id
 
     def stack(self, vector:tuple[int, int, int], amount:int = 1,  pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
+        "Not implemented"
         #idk if ill ever implement this method
         #because it seems kinda useless when you can just do a for loop yourself
         pass
@@ -252,7 +254,7 @@ class Schematic:
             for x in range(pos1v[0], pos2v[0]+1):
                 for y in range(pos1v[1], pos2v[1]+1):
                     for z in range(pos1v[2], pos2v[2]+1):
-                        if self._blocks.get((x, y, z)) != None:     #couldnt find a faster way to do it
+                        if self._blocks.get((x, y, z)) != None:     #couldnt find a better way to do it
                             self._block.pop((x, y, z))
 
         #paste the copied blocks into the new area
@@ -286,18 +288,17 @@ class Schematic:
             for y in range(pos1[1], pos2[1]+1):
                 for z in range(pos1[2], pos2[2]+1):
                     id = self._blocks.get((x, y, z), default)
-                    if type(id) == tuple:   #container
+                    if type(id) is tuple:   #container
                         id = id[0]
                     if id == oldid:
                         self._blocks[(x, y, z)] = newid
 
     def open(self, directory:str = None) -> None:
         "Opens an existing schematic which you can then modify. Deletes the schematic you were creating currently!"
-        file = NBTFile(directory, "rb")
+        file = nbt.NBTFile(directory, "rb")
         if len(file["Palette"]) > 256:
             raise Exception("Too many different blocks in the palette you dumdum")
             #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
-        #print(file.pretty_tree())
         self._palette = {}
         self._blocks = {}
 
@@ -312,9 +313,9 @@ class Schematic:
         OffsetZ = Metadata.get("WEOffsetZ", 0).value
 
         #get dimensions
-        Width = file["Width"].value
-        Height = file["Height"].value
-        Length = file["Length"].value
+        Width = file.get("Width", 0).value
+        Height = file.get("Height", 0).value
+        Length = file.get("Length", 0).value
 
         #getting the blocks
         for x in range(Width):
@@ -357,7 +358,7 @@ class Schematic:
                 slots = 3
             elif block == "dropper" or block == "dispenser":
                 slots = 9
-            else: continue     #just skip whatever that might be lol (comparators have an entry in the block entity list)(we just ignnore them lol)
+            else: continue     #just skip whatever that might be lol (comparators have an entry in the block entity list for example  so we just ignnore them lol)
             #this means you will have to update them once you paste the schematic but i couldnt be bothered to add it
             fullness = 0
             for j in range(len(file["BlockEntities"][i].get("Items", []))):     #go trough each slot and count the items
@@ -368,3 +369,7 @@ class Schematic:
     def save(self, location:str) -> None:
         "Saves the schematic at the specified location. e.g. C:/some/path/to/schem.schem"
         self._generateSchematic().write_file(location)
+
+    def printschem(self) -> None:
+        "Prints the schematic in tree form to the console"
+        print(self._generateSchematic().pretty_tree())

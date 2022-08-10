@@ -1,11 +1,11 @@
 
-from SchemGenerator.SchemGenerator import *
+import SchemGenerator.SchemGenerator as schem
 import time
 
 # generates a colletion of containers with some signal strangth from 0 to 15 in order
 # signs above tell the signal strength
 def main():
-    file = Schematic()
+    file = schem.Schematic()
     print("Placing blocks...")
     timestartfill = time.perf_counter()
 

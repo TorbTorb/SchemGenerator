@@ -1,10 +1,10 @@
 
-from SchemGenerator.SchemGenerator import *
+import SchemGenerator.SchemGenerator as schem
 import time
 
 #takes one of 2 included schematics and modifies them
 def main():
-    file = Schematic()
+    file = schem.Schematic()
     print("Placing blocks...")
     timestartfill = time.perf_counter()
 

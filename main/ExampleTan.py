@@ -1,14 +1,14 @@
 
 from math import tan
 import time
-from SchemGenerator.SchemGenerator import *
+import SchemGenerator.SchemGenerator as schem
 
 def main():
     # this generates a schematic of tan(x^2 + y^2) <= some threshold#
     # https://youtu.be/IbYZ027zBlM?t=340
     print("Placing blocks...")
     timestartfill = time.perf_counter()
-    schematic = Schematic()
+    schematic = schem.Schematic()
 
     #you can play with these
     exponent = 3
