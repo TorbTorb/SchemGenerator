@@ -1,7 +1,13 @@
 test/
+main/Schematics/dataloopConv.schem
 main/Schematics/openTestResult.schem
 main/Schematics/ssTest.schem
 main/Schematics/tanTest.schem
+main/Schematics/testopen.schem
+main/Schematics/testopen2.schem
+main/ModifiyExisting.py
+
+
 __pycache__/
 main/__pycache__/
 main/SchemGenerator/__pycache__

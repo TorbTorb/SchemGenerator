@@ -33,9 +33,7 @@ class Schematic:
 
     def _generateSchematic(self):
         #generates the schematic
-        if len(self._palette) > 256:
-            raise Exception("Too many different blocks you dumdum")
-        #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
+
         #get the min and max coords
         xmin, ymin, zmin, xmax, ymax, zmax = self._getminmaxcoords()
         height = ymax - ymin + 1
@@ -74,7 +72,13 @@ class Schematic:
         for i in self._palette.items():
             invertedpalette[i[1]] = i[0]
         #create actual Blockdata
-        blockdata = [self._palette.get("air", 0)] * (width*length*height)
+        self._addtopalette("air")
+
+        if len(self._palette) > 256:
+            raise Exception("Too many different blocks you dumdum")
+        #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
+
+        blockdata = [self._palette["air"]] * (width*length*height)
         for block in self._blocks.items():
             if type(block[1]) is int:   #its a normal block
                 blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1]
@@ -103,7 +107,7 @@ class Schematic:
                     mult = 64
                     easy = False
                 else:
-                    raise Exception("Container of type " + container + " is not supported / valid")
+                    raise Exception(f"Container of type {block} is not supported / valid")
                 #calc items for ss
                 itemamount = max(block[1][1],ceil(slots*mult/14*(block[1][1]-1)))
                 #block entity template
@@ -293,18 +297,26 @@ class Schematic:
                     if id == oldid:
                         self._blocks[(x, y, z)] = newid
 
-    def open(self, directory:str = None) -> None:
+    def open(self, directory:str = None, ignorePaletteSize = False) -> None:
         "Opens an existing schematic which you can then modify. Deletes the schematic you were creating currently!"
         file = nbt.NBTFile(directory, "rb")
-        if len(file["Palette"]) > 256:
-            raise Exception("Too many different blocks in the palette you dumdum")
-            #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
         self._palette = {}
         self._blocks = {}
-
+        oldpalette = {}
         #copy palette
         for i in file["Palette"].items():
-            self._palette[i[0].removeprefix("minecraft:")] = i[1].value
+            block = i[0].removeprefix("minecraft:")
+            if block[:13] =="redstone_wire":    #optimisation for redstone dust which otherwise createes a lot of entries in the palette
+                block = block.split("[", 1)[0]
+            oldpalette[i[1].value] = block       #keep copy of reversed original palette for later
+            self._addtopalette(block)
+
+        if len(self._palette) > 256:## or 128/127???
+            if ignorePaletteSize:
+                print("There are too many different blocks in the palette. If you save it like it is it will fail!")
+            else:
+                raise Exception("Too many different block in the palette!")
+            #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
 
         #get offsets
         Metadata = file.get("Metadata")
@@ -316,12 +328,15 @@ class Schematic:
         Width = file.get("Width", 0).value
         Height = file.get("Height", 0).value
         Length = file.get("Length", 0).value
-
         #getting the blocks
         for x in range(Width):
             for y in range(Height):
                 for z in range(Length):
-                    self._blocks[(x + OffsetX, y + OffsetY, z + OffsetZ)] = file["BlockData"][(y*Length + z)*Width + x]
+                    block = file["BlockData"][(y*Length + z)*Width + x]
+                    id = oldpalette[block]
+                    if id == "air": continue
+                    id = self._palette[id]
+                    self._blocks[(x + OffsetX, y + OffsetY, z + OffsetZ)] = id
 
         #reading block entities (not fun)
         #dict for looking up the max stack size of items
@@ -333,9 +348,9 @@ class Schematic:
         "minecraft:snowball": 16,
         "minecraft:totem_of_undying": 1}
         #go through the blockentity list
-        for i in range(len(file["BlockEntities"])):
-            block = file["BlockEntities"][i]["Id"].value.removeprefix("minecraft:")
-            pos = list(file["BlockEntities"][i]["Pos"].value)
+        for blockEntity in file["BlockEntities"]:
+            block = blockEntity["Id"].value.removeprefix("minecraft:")
+            pos = list(blockEntity["Pos"].value)
             pos[0] += OffsetX
             pos[1] += OffsetY
             pos[2] += OffsetZ
@@ -344,10 +359,10 @@ class Schematic:
             if "sign" in block:
                 text = ""
                 for j in range(4):
-                    line = file["BlockEntities"][i][f"Text{j+1}"].value.removeprefix('{"text":"').removesuffix('"}')
+                    line = blockEntity[f"Text{j+1}"].value.removeprefix('{"text":"').removesuffix('"}')
                     text += f"{line}\n"
-                color = file["BlockEntities"][i]["Color"].value
-                glowing = bool(file["BlockEntities"][i]["GlowingText"].value)
+                color = blockEntity["Color"].value
+                glowing = bool(blockEntity["GlowingText"].value)
                 self._blocks[pos] = (self._blocks[pos], text, color, glowing)
                 continue
             if block == "chest" or block == "barrel" or "shulker_box" in block:
@@ -361,15 +376,11 @@ class Schematic:
             else: continue     #just skip whatever that might be lol (comparators have an entry in the block entity list for example  so we just ignnore them lol)
             #this means you will have to update them once you paste the schematic but i couldnt be bothered to add it
             fullness = 0
-            for j in range(len(file["BlockEntities"][i].get("Items", []))):     #go trough each slot and count the items
-                fullness += file["BlockEntities"][i]["Items"][j]["Count"].value / maxStack.get(file["BlockEntities"][i]["Items"][j]["id"].value, 64)    #default to 64 id the item cant be found
+            for items in blockEntity.get("Items", []):     #go trough each slot and count the items
+                fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 id the item cant be found
             signalStrength = floor(1 + ((fullness) / (slots)) * 14)
             self._blocks[pos] = (self._blocks[pos], signalStrength)
 
     def save(self, location:str) -> None:
         "Saves the schematic at the specified location. e.g. C:/some/path/to/schem.schem"
         self._generateSchematic().write_file(location)
-
-    def printschem(self) -> None:
-        "Prints the schematic in tree form to the console"
-        print(self._generateSchematic().pretty_tree())
