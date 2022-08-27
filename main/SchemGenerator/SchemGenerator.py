@@ -378,7 +378,7 @@ class Schematic:
             fullness = 0
             for items in blockEntity.get("Items", []):     #go trough each slot and count the items
                 fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 id the item cant be found
-            signalStrength = floor(1 + ((fullness) / (slots)) * 14)
+            signalStrength = min(0, floor(1 + ((fullness) / (slots)) * 14))      #the min() is in case the fullness is 0
             self._blocks[pos] = (self._blocks[pos], signalStrength)
 
     def save(self, location:str) -> None:
