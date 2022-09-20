@@ -1,0 +1,10 @@
+LICENSE
+README.md
+setup.py
+src/SchemGenerator/SchemGenerator.py
+src/SchemGenerator/__init__.py
+src/SchemGenerator.egg-info/PKG-INFO
+src/SchemGenerator.egg-info/SOURCES.txt
+src/SchemGenerator.egg-info/dependency_links.txt
+src/SchemGenerator.egg-info/requires.txt
+src/SchemGenerator.egg-info/top_level.txt

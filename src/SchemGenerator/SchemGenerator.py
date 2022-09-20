@@ -3,7 +3,7 @@ import nbt.nbt as nbt
 
 #schematic generator by Torb
 #this tool allows you to easily create and modify schematics without having to worry about all the nbttags and whatnot
-#this might not work if you are using a python version below 3.10
+#this will not work if you are using a python version below 3.10
 #if that is the case just remove the type hints
 #if you want it to work on a lower version you need to remove the type hints (more specifically the tuple[] hint)
 class Schematic:
