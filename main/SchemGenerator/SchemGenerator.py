@@ -74,17 +74,17 @@ class Schematic:
         #create actual Blockdata
         self._addtopalette("air")
 
-        if len(self._palette) > 256:
-            raise Exception("Too many different blocks you dumdum")
-        #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
 
-        blockdata = [self._palette["air"]] * (width*length*height)
+
+        blockdatatemp = []
         for block in self._blocks.items():
             if type(block[1]) is int:   #its a normal block
-                blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1]
+                #data = block[1]
+                blockdatatemp[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1]
 
             elif type(block[1][1]) is int:    #its a container
-                blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
+                #data = block[1][0]
+                blockdatatemp[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
                 #get container type
                 container = invertedpalette.get(block[1][0])
                 if container == None:    #this executes if the block has NOT been found in the palette. 
@@ -134,7 +134,8 @@ class Schematic:
                         itemamount = itemamount - 64
 
             elif type(block[1][1]) is str:  #its a sign
-                blockdata[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
+                #data = block[1][0]
+                blockdatatemp[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
                 nbtfile["BlockEntities"].tags.append(nbt.TAG_Compound())
                 nbtfile["BlockEntities"][-1].tags.extend([
                     nbt.TAG_String(name = "Color", value = block[1][2]),
@@ -146,6 +147,18 @@ class Schematic:
                 text.extend(["","",""])
                 for i in range(4):
                     nbtfile["BlockEntities"][-1].tags.append(nbt.TAG_String(name = f"Text{i+1}", value = '{"text":"' + text[i]+ '"}'))
+
+            else: raise Exception(f"Unknown block Type for block: {block}")
+
+
+        #take care of palette ids over 127
+        blockdata = []
+        for data in blockdatatemp:
+            if data > 127:  #handling ids over 127
+                blockdata.extend((128 + (data%128)), (data//128))
+            else:
+                blockdata.append(data)
+
 
         nbtfile["BlockData"].value = blockdata
         return nbtfile
@@ -227,7 +240,7 @@ class Schematic:
         "Not implemented"
         #idk if ill ever implement this method
         #because it seems kinda useless when you can just do a for loop yourself
-        pass
+        raise NotImplementedError()
 
     def move(self, vector:tuple[int, int, int] = (0,0,0), moveair = True, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
         "Moves the blocks inside the selection by the vector. If no positions are given then the whole schematic will be moved."
@@ -297,7 +310,7 @@ class Schematic:
                     if id == oldid:
                         self._blocks[(x, y, z)] = newid
 
-    def open(self, directory:str = None, ignorePaletteSize = False) -> None:
+    def open(self, directory:str) -> None:
         "Opens an existing schematic which you can then modify. Deletes the schematic you were creating currently!"
         file = nbt.NBTFile(directory, "rb")
         self._palette = {}
@@ -306,17 +319,9 @@ class Schematic:
         #copy palette
         for i in file["Palette"].items():
             block = i[0].removeprefix("minecraft:")
-            if block[:13] =="redstone_wire":    #optimisation for redstone dust which otherwise createes a lot of entries in the palette
-                block = block.split("[", 1)[0]
             oldpalette[i[1].value] = block       #keep copy of reversed original palette for later
             self._addtopalette(block)
 
-        if len(self._palette) > 256:## or 128/127???
-            if ignorePaletteSize:
-                print("There are too many different blocks in the palette. If you save it like it is it will fail!")
-            else:
-                raise Exception("Too many different block in the palette!")
-            #i couldnt find any documentation on how schematics handle palettes with over 256 blocks so i just throw an error :/
 
         #get offsets
         Metadata = file.get("Metadata")
@@ -324,19 +329,26 @@ class Schematic:
         OffsetY = Metadata.get("WEOffsetY", 0).value
         OffsetZ = Metadata.get("WEOffsetZ", 0).value
 
-        #get dimensions
+        #get dimensions if one of those is 0 you are kinda fuked ngl
         Width = file.get("Width", 0).value
         Height = file.get("Height", 0).value
         Length = file.get("Length", 0).value
+        blockdata = file["BlockData"]
         #getting the blocks
         for x in range(Width):
             for y in range(Height):
                 for z in range(Length):
-                    block = file["BlockData"][(y*Length + z)*Width + x]
-                    id = oldpalette[block]
-                    if id == "air": continue
-                    id = self._palette[id]
-                    self._blocks[(x + OffsetX, y + OffsetY, z + OffsetZ)] = id
+                    id = blockdata[0]
+                    if id >= 128:   #id over 127 special case
+                        id += (blockdata[1]*128) - 128
+                        blockdata.pop(0)
+                    blockdata.pop(0)
+
+                    #not trusting that the palette ids of my own palette and the schemtic one line up
+                    blockStr = oldpalette[id]
+                    if blockStr == "air": continue
+                    idOwnPalette = self._palette.get(blockStr, 0)
+                    self._blocks[(x + OffsetX, y + OffsetY, z + OffsetZ)] = idOwnPalette
 
         #reading block entities (not fun)
         #dict for looking up the max stack size of items
@@ -380,6 +392,8 @@ class Schematic:
                 fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 id the item cant be found
             signalStrength = floor(1 + ((fullness) / (slots)) * 14)
             self._blocks[pos] = (self._blocks[pos], signalStrength)
+        
+        del(file)
 
     def save(self, location:str) -> None:
         "Saves the schematic at the specified location. e.g. C:/some/path/to/schem.schem"
