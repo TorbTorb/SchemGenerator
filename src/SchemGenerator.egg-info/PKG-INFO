@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: SchemGenerator
+Version: 1.0.0
+Summary: A Package for creating minecraft schematics
+Home-page: https://github.com/TorbTorb/SchemGenerator
+Author: Torb
+Project-URL: Bug Tracker, https://github.com/TorbTorb/SchemGenerator/issues
+Project-URL: repository, https://github.com/TorbTorb/SchemGenerator/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# Minecraft_Schematic_Generator
+This python tool allows you to easily create, modify and save minecraft worldedit schematic files.

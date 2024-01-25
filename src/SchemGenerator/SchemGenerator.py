@@ -3,7 +3,7 @@ import nbt.nbt as nbt
 
 #schematic generator by Torb
 #this tool allows you to easily create and modify schematics without having to worry about all the nbttags and whatnot
-#this might not work if you are using a python version below 3.10
+#this will not work if you are using a python version below 3.10
 #if that is the case just remove the type hints
 #if you want it to work on a lower version you need to remove the type hints (more specifically the tuple[] hint)
 class Schematic:
@@ -390,7 +390,10 @@ class Schematic:
             fullness = 0
             for items in blockEntity.get("Items", []):     #go trough each slot and count the items
                 fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 id the item cant be found
-            signalStrength = floor(1 + ((fullness) / (slots)) * 14)
+            if fullness == 0:
+                signalStrength = 0
+            else: 
+                signalStrength = floor(1 + ((fullness) / (slots)) * 14)
             self._blocks[pos] = (self._blocks[pos], signalStrength)
         
         del(file)
