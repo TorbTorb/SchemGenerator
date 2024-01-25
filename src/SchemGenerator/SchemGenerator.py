@@ -3,7 +3,7 @@ import nbt.nbt as nbt
 
 #schematic generator by Torb
 #this tool allows you to easily create and modify schematics without having to worry about all the nbttags and whatnot
-#this will not work if you are using a python version below 3.10
+#this might not work if you are using a python version below 3.10
 #if that is the case just remove the type hints
 #if you want it to work on a lower version you need to remove the type hints (more specifically the tuple[] hint)
 class Schematic:
@@ -76,7 +76,7 @@ class Schematic:
 
 
 
-        blockdatatemp = []
+        blockdatatemp = [-1] * length * width * height
         for block in self._blocks.items():
             if type(block[1]) is int:   #its a normal block
                 #data = block[1]
@@ -88,7 +88,7 @@ class Schematic:
                 #get container type
                 container = invertedpalette.get(block[1][0])
                 if container == None:    #this executes if the block has NOT been found in the palette. 
-                    raise Exception(f"Could not find{block} in the palette")    #i dont think this can happen but wont hurt adding it
+                    raise Exception(f"Could not find {block} in the palette")    #i dont think this can happen but wont hurt adding it
                 #get amount of slots and whether to use dust or totems
                 if container[:5] == "chest" or container[:6] == "barrel" or "shulker_box" in container:
                     slots = 27
@@ -107,7 +107,7 @@ class Schematic:
                     mult = 64
                     easy = False
                 else:
-                    raise Exception(f"Container of type {block} is not supported / valid")
+                    raise Exception(f"Container of type {block, invertedpalette[block[1][0]]} is not supported / valid")
                 #calc items for ss
                 itemamount = max(block[1][1],ceil(slots*mult/14*(block[1][1]-1)))
                 #block entity template
@@ -154,8 +154,9 @@ class Schematic:
         #take care of palette ids over 127
         blockdata = []
         for data in blockdatatemp:
+            if data == -1: continue
             if data > 127:  #handling ids over 127
-                blockdata.extend((128 + (data%128)), (data//128))
+                blockdata.extend((128 + (data%128), data//128))
             else:
                 blockdata.append(data)
 
@@ -313,13 +314,13 @@ class Schematic:
     def open(self, directory:str) -> None:
         "Opens an existing schematic which you can then modify. Deletes the schematic you were creating currently!"
         file = nbt.NBTFile(directory, "rb")
-        self._palette = {}
+        self._palette = {"air": 0}
         self._blocks = {}
         oldpalette = {}
         #copy palette
         for i in file["Palette"].items():
             block = i[0].removeprefix("minecraft:")
-            oldpalette[i[1].value] = block       #keep copy of reversed original palette for later
+            oldpalette[i[1].value] = block       #keep copy of reversed original raw palette for later
             self._addtopalette(block)
 
 
@@ -335,19 +336,19 @@ class Schematic:
         Length = file.get("Length", 0).value
         blockdata = file["BlockData"]
         #getting the blocks
-        for x in range(Width):
-            for y in range(Height):
-                for z in range(Length):
-                    id = blockdata[0]
-                    if id >= 128:   #id over 127 special case
-                        id += (blockdata[1]*128) - 128
+        for y in range(Height):     #probably the right ordwer
+            for z in range(Length):
+                for x in range(Width):
+                    rawID = blockdata[0]
+                    if rawID >= 128:   #id over 127 special case
+                        rawID += (blockdata[1]*128) - 128
                         blockdata.pop(0)
                     blockdata.pop(0)
 
                     #not trusting that the palette ids of my own palette and the schemtic one line up
-                    blockStr = oldpalette[id]
-                    if blockStr == "air": continue
+                    blockStr = oldpalette[rawID]
                     idOwnPalette = self._palette.get(blockStr, 0)
+
                     self._blocks[(x + OffsetX, y + OffsetY, z + OffsetZ)] = idOwnPalette
 
         #reading block entities (not fun)
@@ -367,6 +368,8 @@ class Schematic:
             pos[1] += OffsetY
             pos[2] += OffsetZ
             pos = tuple(pos)
+            if self._blocks.get(pos) == None:   #blocks doesnt exist?
+                continue
             #check if its type is container (in our self defined way of storing) or sign
             if "sign" in block:
                 text = ""
@@ -390,10 +393,8 @@ class Schematic:
             fullness = 0
             for items in blockEntity.get("Items", []):     #go trough each slot and count the items
                 fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 id the item cant be found
-            if fullness == 0:
-                signalStrength = 0
-            else: 
-                signalStrength = floor(1 + ((fullness) / (slots)) * 14)
+            signalStrength = floor(1 + ((fullness) / (slots)) * 14)
+
             self._blocks[pos] = (self._blocks[pos], signalStrength)
         
         del(file)
