@@ -399,8 +399,8 @@ class Schematic:
                 signalStrength = floor(1 + ((fullness) / (slots)) * 14)
 
             self._blocks[pos] = (self._blocks[pos], signalStrength)
-        
-        del(file)
+
+        del(file)   #delete to stop reading?
 
     def save(self, location:str) -> None:
         "Saves the schematic at the specified location. e.g. C:/some/path/to/schem.schem"
