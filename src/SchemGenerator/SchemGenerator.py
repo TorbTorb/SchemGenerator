@@ -1,10 +1,10 @@
 from math import ceil, floor
 import nbt.nbt as nbt
 
-#schematic generator by Torb
+#Minecraft Schematic Generator by Torb
+
 #this tool allows you to easily create and modify schematics without having to worry about all the nbttags and whatnot
 #this might not work if you are using a python version below 3.10
-#if that is the case just remove the type hints
 #if you want it to work on a lower version you need to remove the type hints (more specifically the tuple[] hint)
 class Schematic:
     def __init__(self):
@@ -21,7 +21,7 @@ class Schematic:
     def _getminmaxcoords(self):
         #gets the minimum and maximum coords for creating the schem
         #quite expensive method but the using append seems to be the fastest
-        if len(self._blocks) == 0: return 0, 0, 0, 0, 0, 0  #stupid check if the user tries to save/print empty schematic
+        if len(self._blocks) == 0: return 0, 0, 0, 0, 0, 0  #stupid check if the the blocks dict is empty
         keyx = []
         keyy = []
         keyz = []
@@ -77,7 +77,9 @@ class Schematic:
 
 
         blockdatatemp = [-1] * length * width * height
+        #use -1 to initialize the list, so we can ignore those later when dealing with ids over 127 (varints)
         for block in self._blocks.items():
+            #ik its a bit funky finding out what type of block the block is
             if type(block[1]) is int:   #its a normal block
                 #data = block[1]
                 blockdatatemp[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1]
@@ -89,27 +91,19 @@ class Schematic:
                 container = invertedpalette.get(block[1][0])
                 if container == None:    #this executes if the block has NOT been found in the palette. 
                     raise Exception(f"Could not find {block} in the palette")    #i dont think this can happen but wont hurt adding it
-                #get amount of slots and whether to use dust or totems
-                if container[:5] == "chest" or container[:6] == "barrel" or "shulker_box" in container:
+                #get amount of slots
+                if container[:5] == "chest" or container[:13] == "trapped_chest" or container[:6] == "barrel" or "shulker_box" in container:
                     slots = 27
-                    mult = 1
-                    easy = True
                 elif container[:6] == "hopper":
                     slots = 5
-                    mult = 64
-                    easy = False
                 elif "furnace" in container or container[:6] == "smoker":
                     slots = 3
-                    mult = 64
-                    easy = False
                 elif container[:7] == "dropper" or container[:9] == "dispenser":
                     slots = 9
-                    mult = 64
-                    easy = False
                 else:
-                    raise Exception(f"Container of type {block, invertedpalette[block[1][0]]} is not supported / valid")
+                    raise Exception(f"Container of type {invertedpalette[block[1][0]]} at {block[0]} is not supported / valid")
                 #calc items for ss
-                itemamount = max(block[1][1],ceil(slots*mult/14*(block[1][1]-1)))
+                itemamount = max(block[1][1],ceil((slots*64) / (14*(block[1][1]-1))))
                 #block entity template
                 nbtfile["BlockEntities"].tags.append(nbt.TAG_Compound())
                 nbtfile["BlockEntities"][-1].tags.extend([
@@ -118,24 +112,21 @@ class Schematic:
                     nbt.TAG_String(name = "Id", value = "minecraft:" + container),
                     nbt.TAG_Int_Array(name = "Pos")])
                 nbtfile["BlockEntities"][-1]["Pos"].value = [block[0][0] - xmin, block[0][1] - ymin, block[0][2] - zmin]
-                if easy:
+
+                #fill container with right amount of dust
+                for i in range((itemamount//64) + 1):
                     nbtfile["BlockEntities"][-1]["Items"].tags.append(nbt.TAG_Compound())
-                    nbtfile["BlockEntities"][-1]["Items"][0].tags.extend([
-                        nbt.TAG_Byte(name="Count", value = itemamount),
-                        nbt.TAG_String(name="id", value = "minecraft:totem_of_undying"),
-                        nbt.TAG_Byte(name="Slot", value = 0)])
-                else:
-                    for i in range((itemamount//64) + 1):
-                        nbtfile["BlockEntities"][-1]["Items"].tags.append(nbt.TAG_Compound())
-                        nbtfile["BlockEntities"][-1]["Items"][-1].tags.extend([
-                            nbt.TAG_Byte(name="Count", value = min(itemamount, 64)),
-                            nbt.TAG_String(name="id", value = "minecraft:redstone"),
-                            nbt.TAG_Byte(name="Slot", value = i)])
-                        itemamount = itemamount - 64
+                    nbtfile["BlockEntities"][-1]["Items"][-1].tags.extend([
+                        nbt.TAG_Byte(name="Count", value = min(itemamount, 64)),
+                        nbt.TAG_String(name="id", value = "minecraft:redstone"),
+                        nbt.TAG_Byte(name="Slot", value = i)])
+                    itemamount = itemamount - 64
+
 
             elif type(block[1][1]) is str:  #its a sign
                 #data = block[1][0]
                 blockdatatemp[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
+
                 nbtfile["BlockEntities"].tags.append(nbt.TAG_Compound())
                 nbtfile["BlockEntities"][-1].tags.extend([
                     nbt.TAG_String(name = "Color", value = block[1][2]),
@@ -143,12 +134,14 @@ class Schematic:
                     nbt.TAG_String(name = "Id", value = "minecraft:sign"),
                     nbt.TAG_Int_Array(name = "Pos")])
                 nbtfile["BlockEntities"][-1]["Pos"].value = [block[0][0] - xmin, block[0][1] - ymin, block[0][2] - zmin]
+
+                #convert text to json thingy
                 text = block[1][1].split("\n")
-                text.extend(["","",""])
+                text.extend(["","",""])     #have atleast length of 4
                 for i in range(4):
                     nbtfile["BlockEntities"][-1].tags.append(nbt.TAG_String(name = f"Text{i+1}", value = '{"text":"' + text[i]+ '"}'))
 
-            else: raise Exception(f"Unknown block Type for block: {block}")
+            else: raise Exception(f"Unknown block Type for block: {invertedpalette.get(block[1][0]), block}")
 
 
         #take care of palette ids over 127
@@ -179,51 +172,57 @@ class Schematic:
         #check to see if block is in the palette, if it isnt add it
         id = self._palette.get(blocktype)
         if id == None:  #block doesnt exist in palette yet
-            self._palette[blocktype] = len(self._palette)
+            self._palette[blocktype] = len(self._palette)       #do not implement a method for removing items from the palette without reworking this!
 
-    def getBlock(self, pos:tuple[int, int, int]) -> str | None:
-        "Returns the current block at some position. Returns None if that block hasnt been set. If the block is a sign/container then it will return (<blocktype>, (<other information like ss or text))"
+    def getBlock(self, pos:tuple[int, int, int]) -> str| tuple | None:
+        "Returns None if that block hasnt been set. If the Block is set then it will return a tuple (the inner tuple might be empty) like : (<blocktype>, (<other information like ss or text))"
         id = self._blocks.get(pos, None)
         if type(id) is tuple:   #container/sign
-            for blocktype in self._palette.items():
-                if blocktype[1] == id[0]:
-                    return blocktype[0], id[1:]
+            data = id[1:]
+            id = id[0]
         else:
-            for blocktype in self._palette.items():
-                if blocktype[1] == id:
-                    return blocktype[0]
+            data = ()
+        
+        for blocktype in self._palette.items():
+            if blocktype[1] == id:
+                return (blocktype[0], data)
+
         return None
 
     def setBlock(self, pos:tuple[int, int, int], blocktype:str) -> None:
         "Sets a block at the specified position. You can add additional data like: stone_slab[type=top]"
-        # add the block to _blocks
+
         blocktype = blocktype.removeprefix("minecraft:")
         self._addtopalette(blocktype)
         #place the block
         self._blocks[pos] = self._palette.get(blocktype)
 
     def setSSContainer(self, pos:tuple[int, int, int], containertype:str,  ss:int = 0) -> None:
-        "Sets a container with a specified ss at some positon. Additional data can be give like barrel[facing=up]. Working containers are: barrels, chests, hoppers, composters, droppers, dispensers, all types of furnaces and shulker boxes."
+        "Sets a container with a specified ss at some positon. Additional data can be give like barrel[facing=up]. Working containers are: barrels, (trapped)chests, hoppers, composters, droppers, dispensers, all types of furnaces and shulker boxes."
         containertype = containertype.removeprefix("minecraft:")
         if  type(ss) != int or ss>15 or ss<0:   #invalid ss detection
             raise Exception(f"Given signal strength of '{ss}' is invalid")
+        
         if containertype == "composter":        #special case for composter since its not a blockentity but a normal block instead
             containertype = f"composter[level={ss%9}]"
             self._addtopalette(containertype)
             self._blocks[pos] = self._palette.get(containertype)
             return
+        
         self._addtopalette(containertype)
         self._blocks[pos] = (self._palette.get(containertype), ss)
 
     def setSign(self, pos:tuple[int, int, int], text:str = "", rotation:int = 0, iswall = False, woodtype:str = "birch", color = "black", isGlowing = False):
-        "Places a sign. Rotation 0 is text facing north increasing the number will rotate is clockwise. Seperate text with newlines."
+        "Places a sign. Rotation 0 is text facing north increasing the number by one will rotate it clockwise by 22.5°. Seperate text with newlines."
+        #check if woodtype is valid???
         facinglist = ["north", "east", "south", "west"]
         if iswall:
-            woodtype = f"{woodtype}_wall_sign[facing={facinglist[rotation % 4]}]"
+            sign = f"{woodtype}_wall_sign[facing={facinglist[rotation % 4]}]"
         else:
-            woodtype = f"{woodtype}_sign[rotation={((rotation + 8) % 16)}]"
-        self._addtopalette(woodtype)
-        self._blocks[pos] = (self._palette[woodtype], text, color, isGlowing)
+            sign = f"{woodtype}_sign[rotation={((rotation + 8) % 16)}]"
+
+        self._addtopalette(sign)
+        self._blocks[pos] = (self._palette[sign], text, color, isGlowing)
 
     def fill(self, blocktype:str, pos1:tuple[int, int, int], pos2:tuple[int, int, int]) -> None:
         "Fills the space between the 2 position with the given block"
@@ -244,10 +243,10 @@ class Schematic:
         raise NotImplementedError()
 
     def move(self, vector:tuple[int, int, int] = (0,0,0), moveair = True, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
-        "Moves the blocks inside the selection by the vector. If no positions are given then the whole schematic will be moved."
+        "Moves the blocks inside the selection by the vector (x,y,z). If no positions are given then the whole schematic will be moved."
         if vector == (0,0,0):
             return
-        if pos1 == None or pos2 == None:   #move all. we nees to use a temporary dict here because we could otherwise overwrite blocks
+        if pos1 == None or pos2 == None:   #move all. we need to use a temporary dict here because we could otherwise overwrite blocks
             blocksnew = {}
             for i in self._blocks.items():
                 blocksnew[(i[0][0] + vector[0], i[0][1] + vector[1], i[0][2] + vector[2])] = i[1]
@@ -260,7 +259,7 @@ class Schematic:
         for x in range(pos1[0], pos2[0]+1):
             for y in range(pos1[1], pos2[1]+1):
                 for z in range(pos1[2], pos2[2]+1):
-                    id = self._blocks.get((x,y,z), None)
+                    id = self._blocks.get((x,y,z))
                     if id != None:
                         copyarea[x, y, z] = id
                         self._blocks.pop((x, y, z))
@@ -276,37 +275,40 @@ class Schematic:
                             self._block.pop((x, y, z))
 
         #paste the copied blocks into the new area
-        for i in copyarea.items():
-            self._blocks[(i[0][0] + vector[0], i[0][1] + vector[1], i[0][2] + vector[2])] = i[1]
+        self._blocks = self._blocks | copyarea  #dict union
 
     def replace(self, old:str, new:str, pos1:tuple[int, int, int] = None, pos2:tuple[int, int, int] = None) -> None:
         "Replaces the old blocks with new block in the selection. If no positions are given it will replace all instances of the old block with the new one"
         #replace all (we can just change the palette)
         old = old.removeprefix("minecraft:")
         new = new.removeprefix("minecraft:")
-        if (pos1 == None or pos2 == None) and old != "air":
-            oldid = self._palette.pop(old, None)
-            if oldid == None: return
-            self._palette[new] = oldid
-            return
+        #need new id assignemnt implemetation for this to not be buggy
+        #if (pos1 == None or pos2 == None) and old != "air":
+        #    oldid = self._palette.get(old, None)    #cannot remove the palette entry cause we might fuck up the id assignment
+        #    if oldid == None: return    #no blocks to replace
+        #    self._addtopalette(new)
+        #    return
         #replace in one area
-        elif pos1 == None or pos2 == None:  #replace air only in whole area (very special case)
+        if pos1 == None or pos2 == None:  #replace all blocks
             positions = self._getminmaxcoords()
             pos1 = (positions[0], positions[1], positions[2])
             pos2 = (positions[3], positions[4], positions[5])
-        self._addtopalette(new)
+
         pos1, pos2 = self._sortposition(pos1, pos2)
         oldid = self._palette.get(old)
+
+        self._addtopalette(new)
         newid = self._palette.get(new)
-        if old == "air" or old == "minecraft:air":  #special case if old = air
+
+        if old == "air":  #special case if old = air
             default = oldid
         else:
-            default = False     #not None so that if old would be a block not in the palette it wouldnt break
+            default = -1     #not None so that if old would be a block not in the palette it wouldnt break
         for x in range(pos1[0], pos2[0]+1):
             for y in range(pos1[1], pos2[1]+1):
                 for z in range(pos1[2], pos2[2]+1):
                     id = self._blocks.get((x, y, z), default)
-                    if type(id) is tuple:   #container
+                    if type(id) is tuple:   #container/sign
                         id = id[0]
                     if id == oldid:
                         self._blocks[(x, y, z)] = newid
@@ -368,9 +370,9 @@ class Schematic:
             pos[1] += OffsetY
             pos[2] += OffsetZ
             pos = tuple(pos)
-            if self._blocks.get(pos) == None:   #blocks doesnt exist?
+            if self._blocks.get(pos) == None:   #blocks doesnt exist? shouldnt happen in theory but who knows
                 continue
-            #check if its type is container (in our self defined way of storing) or sign
+            #check if its type is container or sign
             if "sign" in block:
                 text = ""
                 for j in range(4):
@@ -380,7 +382,9 @@ class Schematic:
                 glowing = bool(blockEntity["GlowingText"].value)
                 self._blocks[pos] = (self._blocks[pos], text, color, glowing)
                 continue
-            if block == "chest" or block == "barrel" or "shulker_box" in block:
+
+            #ss container
+            if block == "chest" or block == "trapped_chest" or block == "barrel" or "shulker_box" in block:
                 slots = 27
             elif block == "hopper":
                 slots = 5
@@ -388,19 +392,21 @@ class Schematic:
                 slots = 3
             elif block == "dropper" or block == "dispenser":
                 slots = 9
+
             else: continue     #just skip whatever that might be lol (comparators have an entry in the block entity list for example  so we just ignnore them lol)
             #this means you will have to update them once you paste the schematic but i couldnt be bothered to add it
+
             fullness = 0
             for items in blockEntity.get("Items", []):     #go trough each slot and count the items
-                fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 id the item cant be found
+                fullness += items["Count"].value / maxStack.get(items["id"].value, 64)    #default to 64 if the item cant be found
             if fullness == 0:
                 signalStrength = 0
             else:
-                signalStrength = floor(1 + ((fullness) / (slots)) * 14)
+                signalStrength = floor(1 + (fullness / slots) * 14)
 
             self._blocks[pos] = (self._blocks[pos], signalStrength)
 
-        del(file)   #delete to stop reading?
+        del(file)   #delete to close?
 
     def save(self, location:str) -> None:
         "Saves the schematic at the specified location. e.g. C:/some/path/to/schem.schem"

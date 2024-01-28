@@ -1,5 +1,7 @@
 test/
 main/
+main/Schematics/
+main/SchemGenerator/
 __pycache__/
 SchemGenerator/__pycache__
 
