@@ -103,7 +103,7 @@ class Schematic:
                 else:
                     raise Exception(f"Container of type {invertedpalette[block[1][0]]} at {block[0]} is not supported / valid")
                 #calc items for ss
-                itemamount = max(block[1][1],ceil((slots*64) / (14*(block[1][1]-1))))
+                itemamount = max(block[1][1], ceil((slots*64/14) * (block[1][1]-1)))
                 #block entity template
                 nbtfile["BlockEntities"].tags.append(nbt.TAG_Compound())
                 nbtfile["BlockEntities"][-1].tags.extend([
