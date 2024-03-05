@@ -5,7 +5,7 @@ with open("README.md", "r", encoding = "utf-8") as fh:
 
 setuptools.setup(
     name = "SchemGenerator",
-    version = "1.0.3",
+    version = "1.0.5",
     author = "Torb",
     description = "A Package for creating minecraft schematics",
     long_description = long_description,

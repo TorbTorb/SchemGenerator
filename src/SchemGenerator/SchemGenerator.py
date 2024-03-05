@@ -76,8 +76,8 @@ class Schematic:
 
 
 
-        blockdatatemp = [-1] * length * width * height
-        #use -1 to initialize the list, so we can ignore those later when dealing with ids over 127 (varints)
+        blockdatatemp = [self._palette["air"]] * length * width * height
+        #use id of air to initialize the list, so we dont have to deal with setting air
         for block in self._blocks.items():
             #ik its a bit funky finding out what type of block the block is
             if type(block[1]) is int:   #its a normal block
@@ -122,7 +122,6 @@ class Schematic:
                         nbt.TAG_Byte(name="Slot", value = i)])
                     itemamount = itemamount - 64
 
-
             elif type(block[1][1]) is str:  #its a sign
                 #data = block[1][0]
                 blockdatatemp[((block[0][1] - ymin) * length + block[0][2] - zmin) * width + block[0][0] - xmin] = block[1][0]
@@ -147,7 +146,6 @@ class Schematic:
         #take care of palette ids over 127
         blockdata = []
         for data in blockdatatemp:
-            if data == -1: continue
             if data > 127:  #handling ids over 127
                 blockdata.extend((128 + (data%128), data//128))
             else:
